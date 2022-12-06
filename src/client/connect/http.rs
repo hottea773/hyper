@@ -77,6 +77,7 @@ struct Config {
     keep_alive_timeout: Option<Duration>,
     local_address_ipv4: Option<Ipv4Addr>,
     local_address_ipv6: Option<Ipv6Addr>,
+    local_device: Option<Vec<u8>>,
     nodelay: bool,
     reuse_address: bool,
     send_buffer_size: Option<usize>,
@@ -117,6 +118,7 @@ impl<R> HttpConnector<R> {
                 keep_alive_timeout: None,
                 local_address_ipv4: None,
                 local_address_ipv6: None,
+                local_device: None,
                 nodelay: false,
                 reuse_address: false,
                 send_buffer_size: None,
@@ -191,6 +193,14 @@ impl<R> HttpConnector<R> {
 
         cfg.local_address_ipv4 = Some(addr_ipv4);
         cfg.local_address_ipv6 = Some(addr_ipv6);
+    }
+
+    /// TODO.
+    #[inline]
+    pub fn set_local_device(&mut self, local_device: &[u8]) {
+        let cfg = self.config_mut();
+
+        cfg.local_device = Some(local_device.to_vec());
     }
 
     /// Set the connect timeout.
@@ -613,6 +623,10 @@ fn connect(
         }
     }
 
+    if config.local_device.is_some() {
+        socket.bind_device(config.local_device.as_deref()).map_err(ConnectError::m("tcp bind device local error"))?;
+    }
+
     bind_local_address(
         &socket,
         addr,
@@ -934,6 +948,7 @@ mod tests {
                     let cfg = Config {
                         local_address_ipv4: None,
                         local_address_ipv6: None,
+                        local_device: None,
                         connect_timeout: None,
                         keep_alive_timeout: None,
                         happy_eyeballs_timeout: Some(fallback_timeout),
